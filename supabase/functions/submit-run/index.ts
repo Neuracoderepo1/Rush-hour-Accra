@@ -11,7 +11,7 @@ export default {
 
     const declaredLength = req.headers.get("content-length");
     if (declaredLength !== null) {
-      if (!/^\\d+$/.test(declaredLength)) {
+      if (!/^[0-9]+$/.test(declaredLength)) {
         return json({ error: "invalid_content_length" }, 400);
       }
       if (Number(declaredLength) > 2048) {
