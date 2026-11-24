@@ -1,13 +1,14 @@
--- Rush Hour, Accra: non-monetary score storage.
--- Apply only to a dedicated Supabase project after reviewing the target project.
--- This is a bootstrap SQL file, not an applied migration.
--- No payments, cash balances, ad-revenue allocation, or redemption tables exist here.
+-- Rush Hour, Accra: isolated non-monetary score storage.
+-- Apply only after verifying the target project and reviewing this migration.
+-- All game-owned data lives in rush_hour_accra. The only public objects are
+-- uniquely prefixed API wrappers required by the existing Edge Function contract.
+-- No payments, cash balances, ad-revenue allocation, or redemption tables exist.
 
-create schema if not exists private;
-revoke all on schema private from public;
-grant usage on schema private to anon, authenticated;
+create schema rush_hour_accra;
+revoke all on schema rush_hour_accra from public;
+grant usage on schema rush_hour_accra to anon, authenticated;
 
-create table if not exists private.game_runs (
+create table rush_hour_accra.game_runs (
   id bigint generated always as identity primary key,
   player_id uuid not null references auth.users(id) on delete cascade,
   run_id uuid not null,
@@ -18,41 +19,37 @@ create table if not exists private.game_runs (
     check (status in ('pending', 'verified', 'rejected')),
   created_at timestamptz not null default now(),
   verified_at timestamptz,
-  constraint game_runs_player_run_unique unique (player_id, run_id),
-  constraint game_runs_player_idempotency_unique unique (player_id, idempotency_key),
-  constraint game_runs_verification_consistency check (
+  constraint rha_game_runs_player_run_unique unique (player_id, run_id),
+  constraint rha_game_runs_player_idempotency_unique unique (player_id, idempotency_key),
+  constraint rha_game_runs_verification_consistency check (
     (status = 'verified' and verified_at is not null) or
     (status <> 'verified' and verified_at is null)
   )
 );
 
-create index if not exists game_runs_player_created_idx
-  on private.game_runs (player_id, created_at desc);
-create index if not exists game_runs_verified_score_idx
-  on private.game_runs (score desc, created_at asc)
+create index rha_game_runs_player_created_idx
+  on rush_hour_accra.game_runs (player_id, created_at desc);
+create index rha_game_runs_verified_score_idx
+  on rush_hour_accra.game_runs (score desc, created_at asc)
   where status = 'verified';
 
-alter table private.game_runs enable row level security;
+alter table rush_hour_accra.game_runs enable row level security;
+revoke all on rush_hour_accra.game_runs from public;
+grant select on rush_hour_accra.game_runs to anon;
+grant select, insert on rush_hour_accra.game_runs to authenticated;
 
-revoke all on private.game_runs from public;
-grant select, insert on private.game_runs to authenticated;
-grant select on private.game_runs to anon;
-
-drop policy if exists game_runs_read_own_or_verified on private.game_runs;
-create policy game_runs_read_own_or_verified
-  on private.game_runs for select
+create policy rha_game_runs_read_own_or_verified
+  on rush_hour_accra.game_runs for select
   to authenticated
   using (player_id = (select auth.uid()) or status = 'verified');
 
-drop policy if exists game_runs_public_verified on private.game_runs;
-create policy game_runs_public_verified
-  on private.game_runs for select
+create policy rha_game_runs_public_verified
+  on rush_hour_accra.game_runs for select
   to anon
   using (status = 'verified');
 
-drop policy if exists game_runs_insert_pending_own on private.game_runs;
-create policy game_runs_insert_pending_own
-  on private.game_runs for insert
+create policy rha_game_runs_insert_pending_own
+  on rush_hour_accra.game_runs for insert
   to authenticated
   with check (
     player_id = (select auth.uid())
@@ -60,7 +57,7 @@ create policy game_runs_insert_pending_own
     and verified_at is null
   );
 
-create or replace function private.enforce_game_run_limits()
+create function rush_hour_accra.enforce_game_run_limits()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -79,16 +76,17 @@ begin
     raise exception using errcode = '23514', message = 'run_score_out_of_range';
   end if;
 
-  -- Serialize each player's submissions so concurrent requests cannot race past limits.
-  perform pg_advisory_xact_lock(hashtextextended(auth.uid()::text, 0));
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(auth.uid()::text, 0)
+  );
 
   select count(*) into recent_count
-    from private.game_runs
+    from rush_hour_accra.game_runs
    where player_id = auth.uid()
      and created_at > now() - interval '10 minutes';
 
   select count(*) into daily_count
-    from private.game_runs
+    from rush_hour_accra.game_runs
    where player_id = auth.uid()
      and created_at > now() - interval '24 hours';
 
@@ -100,12 +98,11 @@ begin
 end;
 $$;
 
-drop trigger if exists game_runs_enforce_limits on private.game_runs;
-create trigger game_runs_enforce_limits
-before insert on private.game_runs
-for each row execute function private.enforce_game_run_limits();
+create trigger rha_game_runs_enforce_limits
+before insert on rush_hour_accra.game_runs
+for each row execute function rush_hour_accra.enforce_game_run_limits();
 
-create or replace function public.submit_game_run(
+create function public.rha_submit_game_run(
   p_run_id uuid,
   p_score integer,
   p_duration_seconds integer,
@@ -118,7 +115,7 @@ set search_path = ''
 as $$
 declare
   v_player_id uuid := auth.uid();
-  v_run private.game_runs%rowtype;
+  v_run rush_hour_accra.game_runs%rowtype;
 begin
   if v_player_id is null then
     raise exception using errcode = '42501', message = 'authentication_required';
@@ -130,7 +127,7 @@ begin
   end if;
 
   select * into v_run
-    from private.game_runs
+    from rush_hour_accra.game_runs
    where player_id = v_player_id
      and (run_id = p_run_id or idempotency_key = p_idempotency_key)
    limit 1;
@@ -144,7 +141,7 @@ begin
     );
   end if;
 
-  insert into private.game_runs (
+  insert into rush_hour_accra.game_runs (
     player_id, run_id, idempotency_key, score, duration_seconds
   ) values (
     v_player_id, p_run_id, p_idempotency_key, p_score, p_duration_seconds
@@ -154,7 +151,7 @@ begin
 
   if not found then
     select * into v_run
-      from private.game_runs
+      from rush_hour_accra.game_runs
      where player_id = v_player_id
        and (run_id = p_run_id or idempotency_key = p_idempotency_key)
      limit 1;
@@ -169,25 +166,31 @@ begin
 end;
 $$;
 
-revoke all on function public.submit_game_run(uuid, integer, integer, uuid) from public, anon;
-grant execute on function public.submit_game_run(uuid, integer, integer, uuid) to authenticated;
+revoke all on function public.rha_submit_game_run(uuid, integer, integer, uuid)
+  from public, anon;
+grant execute on function public.rha_submit_game_run(uuid, integer, integer, uuid)
+  to authenticated;
 
-create or replace view public.game_leaderboard
+create view public.rha_game_leaderboard
 with (security_invoker = true)
 as
 select
   'Driver-' || upper(substr(replace(player_id::text, '-', ''), 1, 6)) as player,
   max(score) as best_score,
   count(*)::integer as games_played
-from private.game_runs
+from rush_hour_accra.game_runs
 where status = 'verified'
 group by player_id;
 
-grant select on public.game_leaderboard to anon, authenticated;
+grant select on public.rha_game_leaderboard to anon, authenticated;
 
--- Verification is deliberately an operator-controlled review step.
--- Do not expose UPDATE privileges or a public verification endpoint.
+comment on schema rush_hour_accra is
+  'Isolated data schema for Rush Hour, Accra. Non-monetary game data only.';
+comment on table rush_hour_accra.game_runs is
+  'Player-submitted game scores. Pending until independently reviewed; no redeemable value.';
+
+-- Verification remains operator-controlled. Do not expose a public verification API.
 -- An authorized database operator may verify an independently reviewed run:
--- update private.game_runs
+-- update rush_hour_accra.game_runs
 --    set status = 'verified', verified_at = now()
 --  where id = <reviewed_run_id> and status = 'pending';
