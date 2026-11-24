@@ -8,8 +8,18 @@ export default {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-    const length = Number(req.headers.get("content-length") ?? "0");
-    if (length > 2048) return json({ error: "payload_too_large" }, 413);
+    const declaredLength = Number(req.headers.get("content-length") ?? "0");
+    if (declaredLength > 2048) return json({ error: "payload_too_large" }, 413);
+
+    let rawBody: string;
+    try {
+      rawBody = await req.text();
+    } catch {
+      return json({ error: "invalid_body" }, 400);
+    }
+    if (new TextEncoder().encode(rawBody).byteLength > 2048) {
+      return json({ error: "payload_too_large" }, 413);
+    }
 
     const idempotencyKey = req.headers.get("Idempotency-Key") ?? "";
     if (!UUID_RE.test(idempotencyKey)) {
@@ -18,7 +28,11 @@ export default {
 
     let body: Record<string, unknown>;
     try {
-      body = await req.json();
+      const parsed: unknown = JSON.parse(rawBody);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return json({ error: "invalid_run_payload" }, 400);
+      }
+      body = parsed as Record<string, unknown>;
     } catch {
       return json({ error: "invalid_json" }, 400);
     }
