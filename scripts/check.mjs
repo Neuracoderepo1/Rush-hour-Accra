@@ -8,6 +8,7 @@ const submit = read('../supabase/functions/submit-run/index.ts');
 const leaderboard = read('../supabase/functions/leaderboard/index.ts');
 const schema = read('../supabase/setup.sql');
 const setupDocs = read('../docs/backend-setup.md');
+const monetizationDocs = read('../docs/monetization-readiness.md');
 
 assert.ok(scripts.length > 1000, 'game script should be present');
 new Function(scripts);
@@ -36,6 +37,9 @@ assert.match(schema, /status = 'verified'/);
 assert.doesNotMatch(schema, /service_role|cash_out|create\\s+table\\s+(?:public\\.)?(?:payments?|payouts?|cash_balances)/i);
 assert.match(setupDocs, /pending/);
 assert.match(setupDocs, /No hosted database or Edge Function has been changed/);
+assert.match(monetizationDocs, /OFF \(default\)/);
+assert.match(monetizationDocs, /separate bounded context/);
+assert.match(monetizationDocs, /does not implement a wallet/);
 
 console.log('PASS: inline game JavaScript parses');
 console.log('PASS: non-monetary token and sponsor boundaries are present');
