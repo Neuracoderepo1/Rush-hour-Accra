@@ -1,6 +1,6 @@
 # Score API contract (non-monetary)
 
-The backend implementation is in `supabase/`. It is not deployed by this repository change. Until a dedicated Supabase project and authenticated sign-in integration are configured, the game remains playable in local-only mode.
+The backend implementation is in `supabase/`. It is not deployed by this repository change. Until the approved Supabase project and authenticated sign-in integration are configured, the game remains playable in local-only mode.
 
 ## Product boundary
 
@@ -29,17 +29,6 @@ The server derives player identity from the verified JWT. It does not accept a c
 
 Accepted submissions are stored as `pending`. Replaying an idempotency key returns the original result. The endpoint does not grant any redeemable value.
 
-Suggested response:
-
-```json
-{
-  "run_id": "uuid",
-  "status": "pending",
-  "score": 1250,
-  "leaderboard_eligible": false
-}
-```
-
 ## GET /leaderboard
 
 Public endpoint returning aggregate scores from verified runs only. It exposes a generated player alias, best score, and number of verified games. It does not expose email addresses, user IDs, session identifiers, IP addresses, or private player data.
@@ -53,6 +42,6 @@ A client-reported score is not proof of legitimate play. No public verification 
 - HTTPS only; never expose a Supabase secret/service-role key in the browser.
 - Keep Edge Function JWT verification enabled for `submit-run`.
 - Use Supabase Auth access tokens and a publishable key in the client.
-- Keep row-level security enabled on the private run table.
-- Review and apply `supabase/setup.sql` only to a dedicated project.
+- Keep row-level security enabled on `rush_hour_accra.game_runs`.
+- Keep the `rush_hour_accra` schema out of the exposed Data API schemas; access it through the prefixed RPC and leaderboard view only.
 - No cash balances, ad-revenue allocations, payment rails, or redemption endpoints are part of this project.
