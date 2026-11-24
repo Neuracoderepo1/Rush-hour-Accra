@@ -28,5 +28,5 @@ jobs:
           deno-version: v2.x
       - name: Type-check Supabase Edge Functions
         run: |
-          deno check supabase/functions/submit-run/index.ts
-          deno check supabase/functions/leaderboard/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/submit-run/index.ts
+          deno check --config supabase/functions/deno.json supabase/functions/leaderboard/index.ts
