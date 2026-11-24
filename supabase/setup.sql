@@ -79,6 +79,9 @@ begin
     raise exception using errcode = '23514', message = 'run_score_out_of_range';
   end if;
 
+  -- Serialize each player's submissions so concurrent requests cannot race past limits.
+  perform pg_advisory_xact_lock(hashtextextended(auth.uid()::text, 0));
+
   select count(*) into recent_count
     from private.game_runs
    where player_id = auth.uid()
