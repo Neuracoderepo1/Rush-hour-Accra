@@ -4,21 +4,24 @@
 
 - Supabase Auth supplies the signed-in player identity.
 - The `submit-run` Edge Function accepts a valid user JWT only.
+- All game-owned database data lives in the isolated `rush_hour_accra` schema.
+- A uniquely prefixed `public.rha_submit_game_run` RPC wrapper accepts submissions without exposing the game schema through the Data API.
 - PostgreSQL stores each run as `pending`, with unique player/run and player/idempotency constraints.
 - A database trigger enforces per-player submission limits and score plausibility.
-- The public `leaderboard` function exposes only aggregate rows from verified runs.
+- The public `rha_game_leaderboard` view and `leaderboard` Edge Function expose only aggregate rows from verified runs.
 - There is no public or client-accessible path to mark a run verified.
 
-## Apply to a dedicated project
+## Apply to the approved project
 
-1. Create or select a dedicated Supabase project for Rush Hour, Accra. Do not reuse another product's database without an explicit architecture decision.
-2. Review `supabase/setup.sql`, then apply it in that project's SQL editor.
-3. Deploy the two functions from this repository with the Supabase CLI.
-4. Keep JWT verification enabled for `submit-run`; the public leaderboard is the only unauthenticated function.
-5. Configure the browser with the project Functions URL, its publishable key, and a sign-in integration that supplies a current access token.
-6. Never put a Supabase secret/service-role key in the browser.
+1. Confirm the target Supabase project ref before applying the migration.
+2. Confirm that `rush_hour_accra` does not already exist. The migration intentionally fails rather than adopting an existing schema.
+3. Review `supabase/setup.sql`, then apply it as a migration to the approved project.
+4. Deploy the two functions from this repository with the Supabase CLI.
+5. Keep JWT verification enabled for `submit-run`; the public leaderboard is the only unauthenticated function.
+6. Configure the browser with the project Functions URL, its publishable key, and a sign-in integration that supplies a current access token.
+7. Never put a Supabase secret/service-role key in the browser.
 
-The repository does not contain a project URL, API key, user credentials, or a deployment secret. No hosted database or Edge Function has been changed by this PR.
+The repository does not contain a project URL, API key, user credentials, or a deployment secret. The database migration creates only the `rush_hour_accra` schema and the two uniquely prefixed public API objects. It does not alter the existing `traffic` schema, traffic tables, or traffic Edge Function.
 
 ## Browser configuration
 
