@@ -18,3 +18,15 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+
+  edge-function-typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Edge Functions
+        run: |
+          deno check supabase/functions/submit-run/index.ts
+          deno check supabase/functions/leaderboard/index.ts
