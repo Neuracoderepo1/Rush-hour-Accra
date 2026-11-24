@@ -13,7 +13,7 @@ export default {
     const from = (page - 1) * pageSize;
 
     const { data, error } = await ctx.supabase
-      .from("game_leaderboard")
+      .from("rha_game_leaderboard")
       .select("player, best_score, games_played")
       .order("best_score", { ascending: false })
       .range(from, from + pageSize - 1);
