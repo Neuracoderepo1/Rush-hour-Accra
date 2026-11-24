@@ -1,4 +1,5 @@
 import { withSupabase } from "npm:@supabase/server@1";
+import { readBoundedUtf8Body } from "./request-body.ts";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const json = (body: unknown, status = 200) =>
@@ -8,17 +9,24 @@ export default {
   fetch: withSupabase({ auth: "user" }, async (req, ctx) => {
     if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
-    const declaredLength = Number(req.headers.get("content-length") ?? "0");
-    if (declaredLength > 2048) return json({ error: "payload_too_large" }, 413);
+    const declaredLength = req.headers.get("content-length");
+    if (declaredLength !== null) {
+      if (!/^\\d+$/.test(declaredLength)) {
+        return json({ error: "invalid_content_length" }, 400);
+      }
+      if (Number(declaredLength) > 2048) {
+        return json({ error: "payload_too_large" }, 413);
+      }
+    }
 
     let rawBody: string;
     try {
-      rawBody = await req.text();
-    } catch {
+      rawBody = await readBoundedUtf8Body(req.body, 2048);
+    } catch (error) {
+      if (error instanceof RangeError && error.message === "payload_too_large") {
+        return json({ error: "payload_too_large" }, 413);
+      }
       return json({ error: "invalid_body" }, 400);
-    }
-    if (new TextEncoder().encode(rawBody).byteLength > 2048) {
-      return json({ error: "payload_too_large" }, 413);
     }
 
     const idempotencyKey = req.headers.get("Idempotency-Key") ?? "";
