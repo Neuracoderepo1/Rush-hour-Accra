@@ -33,7 +33,7 @@ assert.match(schema, /security invoker/i);
 assert.match(schema, /submission_rate_limited/);
 assert.match(schema, /leaderboard_eligible/);
 assert.match(schema, /status = 'verified'/);
-assert.doesNotMatch(schema, /service_role|cash_out|create\\s+table\\s+(?:public\\.)?(?:payments?|payouts?|cash_balances)/i);
+assert.doesNotMatch(schema, /service_role|cash_out|create\s+table\s+(?:public\.)?(?:payments?|payouts?|cash_balances)/i);
 assert.match(setupDocs, /pending/);
 assert.match(setupDocs, /No hosted database or Edge Function has been changed/);
 
