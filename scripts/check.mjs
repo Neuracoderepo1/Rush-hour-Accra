@@ -1,0 +1,20 @@
+import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
+
+const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const scripts = [...html.matchAll(/<script>([\\s\\S]*?)<\\/script>/g)].map(m => m[1]).join('\\n');
+assert.ok(scripts.length > 1000, 'game script should be present');
+new Function(scripts);
+assert.match(html, /Collect bonus tokens/);
+assert.match(html, /TOKENS/);
+assert.match(html, /SPONSOR SPOT A/);
+assert.match(html, /SPONSOR SPOT B/);
+assert.match(html, /Viewing it never changes your score/);
+assert.match(scripts, /submitRunResult\\(sc\\)/);
+assert.match(scripts, /Idempotency-Key/);
+assert.doesNotMatch(html, /GH₵|GH\\\\u20b5|Cedis|cash-out|withdrawal/i);
+assert.doesNotMatch(scripts, /rewarded.?ad|cash.?reward|payout/i);
+console.log('PASS: inline JavaScript parses');
+console.log('PASS: virtual-token and optional sponsor boundaries are present');
+console.log('PASS: score submission is idempotency-keyed');
+console.log('PASS: no cash-out or cash-reward implementation is present');
