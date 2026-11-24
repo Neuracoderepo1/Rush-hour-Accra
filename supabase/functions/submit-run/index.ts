@@ -48,7 +48,7 @@ export default {
       return json({ error: "invalid_run_payload" }, 400);
     }
 
-    const { data, error } = await ctx.supabase.rpc("submit_game_run", {
+    const { data, error } = await ctx.supabase.rpc("rha_submit_game_run", {
       p_run_id: runId,
       p_score: score,
       p_duration_seconds: duration,
