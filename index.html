@@ -174,7 +174,7 @@ function trySpawn(){
   if(n>=LN-1)return;
   const r=Math.random(),k=r<.28?{kind:'trotro',w:36,h:68,col:TRO[Math.random()*TRO.length|0]}:r<.6?{kind:'taxi',w:34,h:62,col:'#fcc200'}:{kind:'car',w:34,h:62,col:COLS[Math.random()*COLS.length|0]};
   const reckless=Math.random()<.42;
-  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?1.8+Math.random()*2.2:99,...k});
+  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?1.8+Math.random()*2.2:99,laneWarning:0,...k});
 }
 function spawnItem(){
   const l=Math.floor(Math.random()*LN);if(laneBusy(l,140))return;
@@ -271,13 +271,14 @@ function update(dt){
     if(c.reckless&&!frozen){
       c.laneChangeIn-=dt;
       if(c.laneChangeIn<=0&&c.targetLane===c.lane){
-        const options=[c.lane-1,c.lane+1].filter(v=>v>=0&&v<LN);
+        const options=(c.lane===1.5?[1,2]:[c.lane-1,c.lane+1]).filter(v=>v>=0&&v<LN);
         for(let i=options.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[options[i],options[j]]=[options[j],options[i]]}
         const next=options.find(v=>!cars.some(o=>o!==c&&o.lane===v&&Math.abs(o.y-c.y)<115));
-        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next)}
+        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next);c.laneWarning=.65}
         c.laneChangeIn=1.4+Math.random()*1.8;
       }
-      if(c.targetLane!==c.lane){
+      if(c.targetLane!==c.lane&&c.laneWarning>0)c.laneWarning=Math.max(0,c.laneWarning-dt);
+      else if(c.targetLane!==c.lane){
         c.x+=(c.targetX-c.x)*Math.min(1,dt*1.8);
         if(Math.abs(c.targetX-c.x)<2){c.x=c.targetX;c.lane=c.targetLane}
       }
@@ -373,7 +374,7 @@ function draw(){
   cars.forEach(c=>{
     drawCar(c.x,c.y,c.w,c.h,c.col,c.kind);
     // Amber side markers warn that this vehicle is preparing to cut across.
-    if(c.targetLane!==c.lane&&Math.floor(time*8)%2===0){
+    if((c.laneWarning>0||c.targetLane!==c.lane)&&Math.floor(time*8)%2===0){
       ctx.fillStyle='#ffd23f';ctx.shadowColor='#ffd23f';ctx.shadowBlur=7;
       ctx.fillRect(c.x-c.w/2-2,c.y-12,4,7);ctx.fillRect(c.x+c.w/2-2,c.y-12,4,7);
       ctx.shadowBlur=0;
