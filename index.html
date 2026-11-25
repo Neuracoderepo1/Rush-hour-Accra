@@ -168,13 +168,13 @@ function laneBusy(l,maxY){return cars.some(c=>c.lane===l&&c.y<maxY)}
 
 function trySpawn(){
   // Some traffic deliberately occupies the centre divider, closing the old safe-line exploit.
-  const l=Math.random()<.2?1.5:Math.floor(Math.random()*LN);
+  const l=Math.random()<.28?1.5:Math.floor(Math.random()*LN);
   if(laneBusy(l,200))return;
   let n=0;for(let i=0;i<LN;i++)if(laneBusy(i,170))n++;
   if(n>=LN-1)return;
   const r=Math.random(),k=r<.28?{kind:'trotro',w:36,h:68,col:TRO[Math.random()*TRO.length|0]}:r<.6?{kind:'taxi',w:34,h:62,col:'#fcc200'}:{kind:'car',w:34,h:62,col:COLS[Math.random()*COLS.length|0]};
-  const reckless=Math.random()<.42;
-  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?1.8+Math.random()*2.2:99,laneWarning:0,...k});
+  const reckless=Math.random()<.58;
+  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?.8+Math.random()*.9:99,laneWarning:0,...k});
 }
 function spawnItem(){
   const l=Math.floor(Math.random()*LN);if(laneBusy(l,140))return;
@@ -274,12 +274,12 @@ function update(dt){
         const options=(c.lane===1.5?[1,2]:[c.lane-1,c.lane+1]).filter(v=>v>=0&&v<LN);
         for(let i=options.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[options[i],options[j]]=[options[j],options[i]]}
         const next=options.find(v=>!cars.some(o=>o!==c&&o.lane===v&&Math.abs(o.y-c.y)<115));
-        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next);c.laneWarning=.65}
+        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next);c.laneWarning=.8}
         c.laneChangeIn=1.4+Math.random()*1.8;
       }
       if(c.targetLane!==c.lane&&c.laneWarning>0)c.laneWarning=Math.max(0,c.laneWarning-dt);
       else if(c.targetLane!==c.lane){
-        c.x+=(c.targetX-c.x)*Math.min(1,dt*1.8);
+        c.x+=(c.targetX-c.x)*Math.min(1,dt*1.45);
         if(Math.abs(c.targetX-c.x)<2){c.x=c.targetX;c.lane=c.targetLane}
       }
     }
