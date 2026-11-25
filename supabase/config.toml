@@ -1,0 +1,7 @@
+project_id = "rush-hour-accra"
+
+[functions.submit-run]
+verify_jwt = true
+
+[functions.leaderboard]
+verify_jwt = false

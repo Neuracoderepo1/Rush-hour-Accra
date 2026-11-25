@@ -1,0 +1,9 @@
+{
+  "name": "rush-hour-accra",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A lightweight Accra-inspired browser arcade racer",
+  "scripts": {
+    "test": "node scripts/check.mjs"
+  }
+}
