@@ -11,6 +11,13 @@ const setupDocs = read('../docs/backend-setup.md');
 const monetizationDocs = read('../docs/monetization-readiness.md');
 
 assert.ok(scripts.length > 1000, 'game script should be present');
+assert.match(scripts, /Math\.random\(\)<\.2\?1\.5/);
+assert.match(scripts, /targetLane:l/);
+assert.match(scripts, /reckless=Math\.random\(\)<\.42/);
+assert.match(scripts, /c\.laneChangeIn-=dt/);
+assert.match(scripts, /c\.targetX-c\.x/);
+assert.match(scripts, /Amber side markers warn/);
+assert.match(scripts, /c\.targetLane!==c\.lane/);
 new Function(scripts);
 assert.match(html, /Collect bonus tokens/);
 assert.match(html, /TOKENS/);
