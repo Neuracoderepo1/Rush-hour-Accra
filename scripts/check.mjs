@@ -22,7 +22,7 @@ assert.match(html, /SPONSORED MESSAGE/);
 assert.match(html, /Game resumes automatically at green/);
 assert.match(scripts, /document\.getElementById\('ad'\)\.style\.display='flex'/);
 assert.match(scripts, /document\.getElementById\('ad'\)\.style\.display='none'/);
-assert.match(scripts, /nextLight=dist\+LIGHT_GAP\},2800\)/);
+assert.match(scripts, /nextLight=dist\+LIGHT_GAP\},4500\)/);
 assert.doesNotMatch(scripts, /ad.*(?:click|accept|continue).*green/i);
 assert.match(scripts, /submitRunResult\(sc\)/);
 assert.match(scripts, /RHA_GET_ACCESS_TOKEN/);
