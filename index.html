@@ -52,7 +52,7 @@ canvas{width:100%;height:100%;display:block}
   <section id="ad" aria-live="polite" aria-label="Optional sponsor placement">
    <div id="adlamps" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
    <p id="admsg">RED LIGHT STOP</p>
-   <div id="adslot"><span class="tag">SPONSORED MESSAGE</span><img id="adcreative" src="/assets/backwardz.webp" alt="BackwardZ daily Orbit Challenge sponsor creative"></div>
+   <div id="adslot"><span class="tag">SPONSORED MESSAGE</span><img id="adcreative" src="/assets/backwardz.webp" alt="BackwardZ daily Orbit Challenge sponsor creative"><div id="adfallback" role="img" aria-label="Sponsor creative unavailable" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:.5em;padding:1em;background:linear-gradient(145deg,#06152e,#092b52 55%,#d39b00);color:#fff;text-shadow:0 2px 5px #000"><b id="adfallback-title" style="font-family:var(--disp);font-size:1.6em">BACKWARDZ</b><span id="adfallback-sub">Daily Orbit Challenge</span></div></div>
    <p class="sponsor-note">No click or ad interaction is required. This placeholder is not connected to an advertiser.</p>
   </section>
   <div id="ov">
@@ -167,12 +167,14 @@ function laneX(l){return RX+LW*l+LW/2}
 function laneBusy(l,maxY){return cars.some(c=>c.lane===l&&c.y<maxY)}
 
 function trySpawn(){
-  const l=Math.floor(Math.random()*LN);
+  // Some traffic deliberately occupies the centre divider, closing the old safe-line exploit.
+  const l=Math.random()<.28?1.5:Math.floor(Math.random()*LN);
   if(laneBusy(l,200))return;
   let n=0;for(let i=0;i<LN;i++)if(laneBusy(i,170))n++;
   if(n>=LN-1)return;
   const r=Math.random(),k=r<.28?{kind:'trotro',w:36,h:68,col:TRO[Math.random()*TRO.length|0]}:r<.6?{kind:'taxi',w:34,h:62,col:'#fcc200'}:{kind:'car',w:34,h:62,col:COLS[Math.random()*COLS.length|0]};
-  cars.push({lane:l,x:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,...k});
+  const reckless=Math.random()<.58;
+  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?.8+Math.random()*.9:99,laneWarning:0,...k});
 }
 function spawnItem(){
   const l=Math.floor(Math.random()*LN);if(laneBusy(l,140))return;
@@ -189,12 +191,12 @@ function moveScenery(sp,dt){
 function head(x,y,ph){
   ctx.fillStyle='#555';ctx.fillRect(x-1.5,y+24,3,16);
   ctx.fillStyle='#111';rr(x-9,y-26,18,52,5);ctx.fill();
-  const on=(ph==='red'||ph==='ad')?0:ph==='amber'?1:2,cols=['#ff3b3b','#ffb020','#2fd36b'];
+  const on=(ph==='red'||ph==='ad')?0:(ph==='amber'||ph==='sponsor-amber')?1:2,cols=['#ff3b3b','#ffb020','#2fd36b'];
   for(let i=0;i<3;i++){ctx.fillStyle=i===on?cols[i]:'#3a3a3a';if(i===on){ctx.shadowColor=cols[i];ctx.shadowBlur=14}ctx.beginPath();ctx.arc(x,y-14+i*14,5,0,6.3);ctx.fill();ctx.shadowBlur=0}
 }
 function update(dt){
   if(st!=='play'){moveScenery(st==='menu'?140:0,dt);updateFx(dt);return}
-  if(lt&&['ad','amber','green'].includes(lt.ph)){updateFx(dt);return}
+  if(lt&&['ad','sponsor-amber','green'].includes(lt.ph)){updateFx(dt);return}
   time+=dt;
   const stopping=lt&&lt.ph==='red';
   const boost=!stopping&&(keys.Space||keys.ShiftLeft||keys.ShiftRight||keys.ArrowUp||nitroBtn)&&nitro>0;
@@ -212,12 +214,20 @@ function update(dt){
       const creative=AD_CREATIVES[adCreativeIndex%AD_CREATIVES.length];
       adCreativeIndex++;
       const adImage=document.getElementById('adcreative');
+      const fallback=document.getElementById('adfallback');
+      const fallbackTitle=document.getElementById('adfallback-title');
+      const fallbackSub=document.getElementById('adfallback-sub');
+      adImage.style.display='block';fallback.style.display='none';
+      fallbackTitle.textContent=creative.alt.startsWith('BackwardZ')?'BACKWARDZ':'SITESIGHT GHANA';
+      fallbackSub.textContent=creative.alt.startsWith('BackwardZ')?'Daily Orbit Challenge':'Construction site monitoring';
+      adImage.onerror=()=>{adImage.style.display='none';fallback.style.display='flex'};
+      adImage.onload=()=>{adImage.style.display='block';fallback.style.display='none'};
       adImage.src=creative.src;adImage.alt=creative.alt;
       ad.classList.remove('amber','go');
       ad.style.display='flex';
       setTimeout(()=>{
         if(lt!==L||st!=='play')return;
-        lt.ph='amber';ad.classList.add('amber');
+        lt.ph='sponsor-amber';ad.classList.add('amber');
         document.getElementById('admsg').textContent='YELLOW LIGHT';
       },2250);
       setTimeout(()=>{
@@ -228,7 +238,9 @@ function update(dt){
           if(lt!==L||st!=='play')return;
           ad.style.display='none';ad.classList.remove('go');
           nb.style.display='block';
-          for(const c of cars)if(c.y>lt.y)c.sp=110+Math.random()*140;
+          const clearedStopY=L.y;
+          for(const c of cars)if(c.y>clearedStopY)c.sp=110+Math.random()*140;
+          lt=null;
           nextLight=dist+LIGHT_GAP;
         },650);
       },4500);
@@ -255,6 +267,22 @@ function update(dt){
     const frozen=stopping&&c.y>lt.y;
     if(frozen)c.sp=speed;
     c.y+=(speed-c.sp)*dt;
+    // Reckless traffic weaves into neighbouring lanes after a short reaction window.
+    if(c.reckless&&!frozen){
+      c.laneChangeIn-=dt;
+      if(c.laneChangeIn<=0&&c.targetLane===c.lane){
+        const options=(c.lane===1.5?[1,2]:[c.lane-1,c.lane+1]).filter(v=>v>=0&&v<LN);
+        for(let i=options.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[options[i],options[j]]=[options[j],options[i]]}
+        const next=options.find(v=>!cars.some(o=>o!==c&&o.lane===v&&Math.abs(o.y-c.y)<115));
+        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next);c.laneWarning=.8}
+        c.laneChangeIn=1.4+Math.random()*1.8;
+      }
+      if(c.targetLane!==c.lane&&c.laneWarning>0)c.laneWarning=Math.max(0,c.laneWarning-dt);
+      else if(c.targetLane!==c.lane){
+        c.x+=(c.targetX-c.x)*Math.min(1,dt*1.45);
+        if(Math.abs(c.targetX-c.x)<2){c.x=c.targetX;c.lane=c.targetLane}
+      }
+    }
     if(!frozen)for(const o of cars){
       if(o!==c&&o.lane===c.lane&&o.y>c.y&&o.y-c.y<95){c.sp=o.sp;if(o.y-c.y<72)c.y=o.y-72}
     }
@@ -343,7 +371,15 @@ function draw(){
     if(it.type==='c'){ctx.fillStyle='#ffd23f';ctx.beginPath();ctx.arc(it.x,it.y,11,0,6.3);ctx.fill();ctx.strokeStyle='#b8860b';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#b8860b';ctx.font='bold 15px '+UI;ctx.textAlign='center';ctx.fillText('★',it.x,it.y+5)}
     else{ctx.fillStyle='#0b3a52';rr(it.x-11,it.y-15,22,30,5);ctx.fill();ctx.strokeStyle='#35d0ff';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#35d0ff';ctx.beginPath();ctx.moveTo(it.x+3,it.y-9);ctx.lineTo(it.x-5,it.y+2);ctx.lineTo(it.x,it.y+2);ctx.lineTo(it.x-3,it.y+10);ctx.lineTo(it.x+6,it.y-2);ctx.lineTo(it.x+1,it.y-2);ctx.closePath();ctx.fill()}
   });
-  cars.forEach(c=>drawCar(c.x,c.y,c.w,c.h,c.col,c.kind));
+  cars.forEach(c=>{
+    drawCar(c.x,c.y,c.w,c.h,c.col,c.kind);
+    // Amber side markers warn that this vehicle is preparing to cut across.
+    if((c.laneWarning>0||c.targetLane!==c.lane)&&Math.floor(time*8)%2===0){
+      ctx.fillStyle='#ffd23f';ctx.shadowColor='#ffd23f';ctx.shadowBlur=7;
+      ctx.fillRect(c.x-c.w/2-2,c.y-12,4,7);ctx.fillRect(c.x+c.w/2-2,c.y-12,4,7);
+      ctx.shadowBlur=0;
+    }
+  });
   if(st!=='over')drawCar(P.x,P.y,P.w,P.h,'#fcc200','player',true);
   parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.t/p.m);ctx.fillStyle=p.col;ctx.fillRect(p.x-2,p.y-2,4,4)});ctx.globalAlpha=1;
   texts.forEach(t=>{ctx.globalAlpha=Math.min(1,t.t*1.5);ctx.fillStyle=t.col;ctx.font='800 19px '+UI;ctx.textAlign='center';ctx.fillText(t.txt,t.x,t.y)});ctx.globalAlpha=1;
