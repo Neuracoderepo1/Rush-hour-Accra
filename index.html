@@ -52,7 +52,7 @@ canvas{width:100%;height:100%;display:block}
   <section id="ad" aria-live="polite" aria-label="Optional sponsor placement">
    <div id="adlamps" aria-hidden="true"><span class="r"></span><span class="y"></span><span class="g"></span></div>
    <p id="admsg">RED LIGHT STOP</p>
-   <div id="adslot"><span class="tag">SPONSORED MESSAGE</span><img id="adcreative" src="/assets/backwardz.webp" alt="BackwardZ daily Orbit Challenge sponsor creative"></div>
+   <div id="adslot"><span class="tag">SPONSORED MESSAGE</span><img id="adcreative" src="/assets/backwardz.webp" alt="BackwardZ daily Orbit Challenge sponsor creative"><div id="adfallback" role="img" aria-label="Sponsor creative unavailable" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:.5em;padding:1em;background:linear-gradient(145deg,#06152e,#092b52 55%,#d39b00);color:#fff;text-shadow:0 2px 5px #000"><b id="adfallback-title" style="font-family:var(--disp);font-size:1.6em">BACKWARDZ</b><span id="adfallback-sub">Daily Orbit Challenge</span></div></div>
    <p class="sponsor-note">No click or ad interaction is required. This placeholder is not connected to an advertiser.</p>
   </section>
   <div id="ov">
@@ -212,6 +212,14 @@ function update(dt){
       const creative=AD_CREATIVES[adCreativeIndex%AD_CREATIVES.length];
       adCreativeIndex++;
       const adImage=document.getElementById('adcreative');
+      const fallback=document.getElementById('adfallback');
+      const fallbackTitle=document.getElementById('adfallback-title');
+      const fallbackSub=document.getElementById('adfallback-sub');
+      adImage.style.display='block';fallback.style.display='none';
+      fallbackTitle.textContent=creative.alt.startsWith('BackwardZ')?'BACKWARDZ':'SITESIGHT GHANA';
+      fallbackSub.textContent=creative.alt.startsWith('BackwardZ')?'Daily Orbit Challenge':'Construction site monitoring';
+      adImage.onerror=()=>{adImage.style.display='none';fallback.style.display='flex'};
+      adImage.onload=()=>{adImage.style.display='block';fallback.style.display='none'};
       adImage.src=creative.src;adImage.alt=creative.alt;
       ad.classList.remove('amber','go');
       ad.style.display='flex';
@@ -228,7 +236,9 @@ function update(dt){
           if(lt!==L||st!=='play')return;
           ad.style.display='none';ad.classList.remove('go');
           nb.style.display='block';
-          for(const c of cars)if(c.y>lt.y)c.sp=110+Math.random()*140;
+          const clearedStopY=L.y;
+          for(const c of cars)if(c.y>clearedStopY)c.sp=110+Math.random()*140;
+          lt=null;
           nextLight=dist+LIGHT_GAP;
         },650);
       },4500);
