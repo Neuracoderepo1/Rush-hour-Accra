@@ -11,13 +11,14 @@ const setupDocs = read('../docs/backend-setup.md');
 const monetizationDocs = read('../docs/monetization-readiness.md');
 
 assert.ok(scripts.length > 1000, 'game script should be present');
-assert.match(scripts, /Math\.random\(\)<\.2\?1\.5/);
+assert.match(scripts, /Math\.random\(\)<\.28\?1\.5/);
 assert.match(scripts, /targetLane:l/);
-assert.match(scripts, /reckless=Math\.random\(\)<\.42/);
+assert.match(scripts, /reckless=Math\.random\(\)<\.58/);
 assert.match(scripts, /c\.laneChangeIn-=dt/);
 assert.match(scripts, /c\.targetX-c\.x/);
+assert.match(scripts, /dt\*1\.45/);
 assert.match(scripts, /c\.lane===1\.5\?\[1,2\]/);
-assert.match(scripts, /c\.laneWarning=\.65/);
+assert.match(scripts, /c\.laneWarning=\.8/);
 assert.match(scripts, /c\.laneWarning>0/);
 assert.match(scripts, /Amber side markers warn/);
 assert.match(scripts, /c\.targetLane!==c\.lane/);
