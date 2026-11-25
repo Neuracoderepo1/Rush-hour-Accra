@@ -18,7 +18,7 @@ assert.doesNotMatch(html, /SPONSOR SPOT A|SPONSOR SPOT B|Optional sponsor showca
 assert.doesNotMatch(html, /id="sponsorNote"|id="sponsorA"|id="sponsorB"/);
 assert.match(html, /id="ad" aria-live="polite"/);
 assert.match(html, /SPONSORED MESSAGE/);
-assert.match(html, /Game resumes automatically at green/);
+assert.match(html, /No click or ad interaction is required/);
 assert.match(scripts, /document\.getElementById\('ad'\)\.style\.display='flex'/);
 assert.match(scripts, /ad\.style\.display='none'/);
 assert.match(scripts, /\['ad','amber','green'\]\.includes\(lt\.ph\)/);
