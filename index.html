@@ -189,12 +189,12 @@ function moveScenery(sp,dt){
 function head(x,y,ph){
   ctx.fillStyle='#555';ctx.fillRect(x-1.5,y+24,3,16);
   ctx.fillStyle='#111';rr(x-9,y-26,18,52,5);ctx.fill();
-  const on=(ph==='red'||ph==='ad')?0:ph==='amber'?1:2,cols=['#ff3b3b','#ffb020','#2fd36b'];
+  const on=(ph==='red'||ph==='ad')?0:(ph==='amber'||ph==='sponsor-amber')?1:2,cols=['#ff3b3b','#ffb020','#2fd36b'];
   for(let i=0;i<3;i++){ctx.fillStyle=i===on?cols[i]:'#3a3a3a';if(i===on){ctx.shadowColor=cols[i];ctx.shadowBlur=14}ctx.beginPath();ctx.arc(x,y-14+i*14,5,0,6.3);ctx.fill();ctx.shadowBlur=0}
 }
 function update(dt){
   if(st!=='play'){moveScenery(st==='menu'?140:0,dt);updateFx(dt);return}
-  if(lt&&['ad','amber','green'].includes(lt.ph)){updateFx(dt);return}
+  if(lt&&['ad','sponsor-amber','green'].includes(lt.ph)){updateFx(dt);return}
   time+=dt;
   const stopping=lt&&lt.ph==='red';
   const boost=!stopping&&(keys.Space||keys.ShiftLeft||keys.ShiftRight||keys.ArrowUp||nitroBtn)&&nitro>0;
@@ -217,7 +217,7 @@ function update(dt){
       ad.style.display='flex';
       setTimeout(()=>{
         if(lt!==L||st!=='play')return;
-        lt.ph='amber';ad.classList.add('amber');
+        lt.ph='sponsor-amber';ad.classList.add('amber');
         document.getElementById('admsg').textContent='YELLOW LIGHT';
       },2250);
       setTimeout(()=>{
