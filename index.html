@@ -167,12 +167,14 @@ function laneX(l){return RX+LW*l+LW/2}
 function laneBusy(l,maxY){return cars.some(c=>c.lane===l&&c.y<maxY)}
 
 function trySpawn(){
-  const l=Math.floor(Math.random()*LN);
+  // Some traffic deliberately occupies the centre divider, closing the old safe-line exploit.
+  const l=Math.random()<.2?1.5:Math.floor(Math.random()*LN);
   if(laneBusy(l,200))return;
   let n=0;for(let i=0;i<LN;i++)if(laneBusy(i,170))n++;
   if(n>=LN-1)return;
   const r=Math.random(),k=r<.28?{kind:'trotro',w:36,h:68,col:TRO[Math.random()*TRO.length|0]}:r<.6?{kind:'taxi',w:34,h:62,col:'#fcc200'}:{kind:'car',w:34,h:62,col:COLS[Math.random()*COLS.length|0]};
-  cars.push({lane:l,x:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,...k});
+  const reckless=Math.random()<.42;
+  cars.push({lane:l,targetLane:l,x:laneX(l),targetX:laneX(l),y:-90,sp:110+Math.random()*140,passed:false,reckless,laneChangeIn:reckless?1.8+Math.random()*2.2:99,...k});
 }
 function spawnItem(){
   const l=Math.floor(Math.random()*LN);if(laneBusy(l,140))return;
@@ -265,6 +267,21 @@ function update(dt){
     const frozen=stopping&&c.y>lt.y;
     if(frozen)c.sp=speed;
     c.y+=(speed-c.sp)*dt;
+    // Reckless traffic weaves into neighbouring lanes after a short reaction window.
+    if(c.reckless&&!frozen){
+      c.laneChangeIn-=dt;
+      if(c.laneChangeIn<=0&&c.targetLane===c.lane){
+        const options=[c.lane-1,c.lane+1].filter(v=>v>=0&&v<LN);
+        for(let i=options.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[options[i],options[j]]=[options[j],options[i]]}
+        const next=options.find(v=>!cars.some(o=>o!==c&&o.lane===v&&Math.abs(o.y-c.y)<115));
+        if(next!==undefined){c.targetLane=next;c.targetX=laneX(next)}
+        c.laneChangeIn=1.4+Math.random()*1.8;
+      }
+      if(c.targetLane!==c.lane){
+        c.x+=(c.targetX-c.x)*Math.min(1,dt*1.8);
+        if(Math.abs(c.targetX-c.x)<2){c.x=c.targetX;c.lane=c.targetLane}
+      }
+    }
     if(!frozen)for(const o of cars){
       if(o!==c&&o.lane===c.lane&&o.y>c.y&&o.y-c.y<95){c.sp=o.sp;if(o.y-c.y<72)c.y=o.y-72}
     }
@@ -353,7 +370,15 @@ function draw(){
     if(it.type==='c'){ctx.fillStyle='#ffd23f';ctx.beginPath();ctx.arc(it.x,it.y,11,0,6.3);ctx.fill();ctx.strokeStyle='#b8860b';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle='#b8860b';ctx.font='bold 15px '+UI;ctx.textAlign='center';ctx.fillText('★',it.x,it.y+5)}
     else{ctx.fillStyle='#0b3a52';rr(it.x-11,it.y-15,22,30,5);ctx.fill();ctx.strokeStyle='#35d0ff';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#35d0ff';ctx.beginPath();ctx.moveTo(it.x+3,it.y-9);ctx.lineTo(it.x-5,it.y+2);ctx.lineTo(it.x,it.y+2);ctx.lineTo(it.x-3,it.y+10);ctx.lineTo(it.x+6,it.y-2);ctx.lineTo(it.x+1,it.y-2);ctx.closePath();ctx.fill()}
   });
-  cars.forEach(c=>drawCar(c.x,c.y,c.w,c.h,c.col,c.kind));
+  cars.forEach(c=>{
+    drawCar(c.x,c.y,c.w,c.h,c.col,c.kind);
+    // Amber side markers warn that this vehicle is preparing to cut across.
+    if(c.targetLane!==c.lane&&Math.floor(time*8)%2===0){
+      ctx.fillStyle='#ffd23f';ctx.shadowColor='#ffd23f';ctx.shadowBlur=7;
+      ctx.fillRect(c.x-c.w/2-2,c.y-12,4,7);ctx.fillRect(c.x+c.w/2-2,c.y-12,4,7);
+      ctx.shadowBlur=0;
+    }
+  });
   if(st!=='over')drawCar(P.x,P.y,P.w,P.h,'#fcc200','player',true);
   parts.forEach(p=>{ctx.globalAlpha=Math.max(0,p.t/p.m);ctx.fillStyle=p.col;ctx.fillRect(p.x-2,p.y-2,4,4)});ctx.globalAlpha=1;
   texts.forEach(t=>{ctx.globalAlpha=Math.min(1,t.t*1.5);ctx.fillStyle=t.col;ctx.font='800 19px '+UI;ctx.textAlign='center';ctx.fillText(t.txt,t.x,t.y)});ctx.globalAlpha=1;
